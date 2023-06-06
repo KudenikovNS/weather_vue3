@@ -1,17 +1,22 @@
 <script setup>
-import { ref, onMounted } from "vue";
+import { ref, onMounted, computed } from "vue";
+
+import { API_KEY, BASE_URL } from "./constants";
+import { capitalizeFirstLetter } from "./utils";
 
 import WeatherSummary from "./components/WeatherSummary.vue";
 import Highlights from "./components/HighLights.vue";
-
-import { API_KEY, BASE_URL } from "./constants";
+import Coords from "./components/Coords.vue";
+import Humidity from "./components/Humidity.vue";
 
 const city = ref("Paris");
 const weatherInfo = ref(null);
 
+const isError = computed(() => weatherInfo.value?.cod !== 200);
+
 function getWeather() {
-  fetch(`${BASE_URL}q=${city.value}&appid=${API_KEY}`).then((response) =>
-    response.json().then((data) => (weatherInfo.value = data))
+  fetch(`${BASE_URL}q=${city.value}&units=metric&appid=${API_KEY}`).then(
+    (response) => response.json().then((data) => (weatherInfo.value = data))
   );
 }
 
@@ -24,7 +29,9 @@ onMounted(getWeather);
       <div class="container">
         <div class="laptop">
           <div class="sections">
-            <section class="section section-left">
+            <section
+              :class="['section', 'section-left', { 'section-error': isError }]"
+            >
               <div class="info">
                 <div class="city-inner">
                   <input
@@ -34,63 +41,22 @@ onMounted(getWeather);
                     class="search"
                   />
                 </div>
-                <WeatherSummary />
+                <WeatherSummary v-if="!isError" :weatherInfo="weatherInfo" />
+                <div v-else class="error">
+                  <div class="error title">Oooooops! Something went wrong</div>
+                  <div v-if="weatherInfo?.message" class="error-message">
+                    {{ capitalizeFirstLetter(weatherInfo?.message) }}
+                  </div>
+                </div>
               </div>
             </section>
-            <section class="section section-right">
-              <Highlights />
+            <section v-if="!isError" class="section section-right">
+              <Highlights :weatherInfo="weatherInfo" />
             </section>
           </div>
-          <div class="sections">
-            <section class="section-bottom">
-              <div class="block-bottom">
-                <div class="block-bottom-inner">
-                  <div class="block-bottom-pic pic-coords"></div>
-                  <div class="block-bottom-texts">
-                    <div class="block-bottom-text-block">
-                      <div class="block-bottom-text-block-title">
-                        Longitude: 2.3488
-                      </div>
-                      <div class="block-bottom-text-block-desc">
-                        Longitude measures distance east or west of the prime
-                        meridian.
-                      </div>
-                    </div>
-                    <div class="block-bottom-text-block">
-                      <div class="block-bottom-text-block-title">
-                        Latitude: 48.8534
-                      </div>
-                      <div class="block-bottom-text-block-desc">
-                        Latitude lines start at the equator (0 degrees latitude)
-                        and run east and west, parallel to the equator.
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </section>
-            <section class="section-bottom">
-              <div class="block-bottom">
-                <div class="block-bottom-inner">
-                  <div class="block-bottom-pic pic-humidity"></div>
-                  <div class="block-bottom-texts">
-                    <div class="block-bottom-text-block">
-                      <div class="block-bottom-text-block-title">
-                        Humidity: 60 %
-                      </div>
-                      <div class="block-bottom-text-block-desc">
-                        Humidity is the concentration of water vapor present in
-                        the air. Water vapor, the gaseous state of water, is
-                        generally invisible to the human eye.
-                        <br /><br />
-                        The same amount of water vapor results in higher
-                        relative humidity in cool air than warm air.
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </section>
+          <div v-if="!isError" class="sections">
+            <Coords :coord="weatherInfo.coord" />
+            <Humidity :humidity="weatherInfo.main.humidity" />
           </div>
         </div>
       </div>
@@ -128,6 +94,11 @@ onMounted(getWeather);
 
   @media (max-width: 767px)
     width: 100%
+    padding-right: 0
+
+  &.section-error
+    min-width: 235px
+    width: auto
     padding-right: 0
 
 .section-right
@@ -180,4 +151,15 @@ onMounted(getWeather);
 
   @media (max-width: 767px)
     width: 100%
+
+.error
+  padding-top: 20px
+
+  &-title
+    font-size: 18px
+    font-weight: 700
+
+  &-message
+    padding-top: 10px
+    font-size: 13px
 </style>
